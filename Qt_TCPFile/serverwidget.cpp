@@ -40,6 +40,30 @@ ServerWidget::ServerWidget(QWidget *parent) :
         //成功连接后，才能选择文件
         ui->buttonFile->setEnabled(true);
 
+        //客户端信息是否接收完毕
+        connect(tcpSocket,&QTcpSocket::readyRead,
+                [=]()
+        {
+            //取客户端信息
+            QByteArray buf =tcpSocket->readAll();
+
+//QUESTION:
+            //黏包问题
+            if("file done"==QString(buf))
+            {
+                //文件接收完毕
+                ui->textEdit->append("文件发送完毕");
+                file.close();
+                //断开客户端端口
+                tcpSocket->disconnectFromHost();
+                tcpSocket->close();
+            }
+            else
+            {
+                qDebug()<<buf;
+            }
+        });
+
     });
 
     connect(&timer,&QTimer::timeout,
@@ -100,6 +124,8 @@ void ServerWidget::on_buttonFile_clicked()
 //发送文件按钮
 void ServerWidget::on_buttonSend_clicked()
 {
+    ui->textEdit->append("正在发送文件...");
+    ui->buttonSend->setEnabled(false);
     //先发送文件头信息 文件名##文件大小
     QString head=QString("%1##%2").arg(fileName).arg(fileSize);
 
@@ -131,7 +157,6 @@ void ServerWidget::sendData()
     {
         //每次发送数据的大小
         char buf[4*1024]={0};
-        len = 0;
 
         //往文件中读数据
         len = file.read(buf,sizeof(buf));
@@ -147,11 +172,11 @@ void ServerWidget::sendData()
     if(sendSize==fileSize)
     {
         ui->textEdit->append("文件发送完毕");
-        file.close();
+//        file.close();
 
-        //把客户端端口断开
-        tcpSocket->disconnectFromHost();
-        tcpSocket->close();
+//        //把客户端端口断开
+//        tcpSocket->disconnectFromHost();
+//        tcpSocket->close();
 //        ui->buttonFile->setEnabled(true);
 //        ui->buttonSend->setEnabled(false);
 

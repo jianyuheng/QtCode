@@ -9,6 +9,12 @@ ClientWidget::ClientWidget(QWidget *parent) :
     ui(new Ui::ClientWidget)
 {
     ui->setupUi(this);
+
+    setWindowTitle("客户端");
+
+    //进度条
+    ui->progressBar->setValue(0);
+
     tcpSocket=new QTcpSocket(this);
     isStart=true;
     connect(tcpSocket,&QTcpSocket::readyRead,
@@ -39,17 +45,43 @@ ClientWidget::ClientWidget(QWidget *parent) :
             {
                 qDebug()<<"WriteOnly error 36";
             }
+
+
+//            //弹出对话框，显示接受文件的信息
+//QUESTION?
+//            QString str=QString("接收的文件：[%1:%2kb]").arg(fileName).arg(fileSize/1024);
+//            QMessageBox::information(this,"文件信息",str);
+
+
+            //设置进度条
+            ui->progressBar->setMinimum(0);
+            ui->progressBar->setMaximum(fileSize/1024);
+            ui->progressBar->setValue(0);
         }
 
         else//文件信息
         {
            qint64 len=file.write(buf);
-           recvSize+=len;
-
-           if(recvSize==fileSize)
+           if(len>0)//接收数据大于0
            {
-               file.close();
+               recvSize+=len;
+               QString str=QString::number(recvSize);
+
+               tcpSocket->write(str.toUtf8().data());
+               //qDebug()<<len;
+           }
+
+           //更新进度条
+           ui->progressBar->setValue(recvSize/1024);
+
+
+           if(recvSize==fileSize)//文件接受完毕
+           {
+               //给服务器发送信息表明客户端已成功接收文件
+               tcpSocket->write("file done");
                QMessageBox::information(this,"完成","文件接受完成");
+               file.close();
+
 
                tcpSocket->disconnectFromHost();
                tcpSocket->close();
